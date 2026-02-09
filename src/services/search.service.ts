@@ -148,6 +148,15 @@ export class SearchService {
         "Failed to search codebase",
         error instanceof Error ? { cause: error } : { error },
       );
+    } finally {
+      try {
+        await Promise.all([
+          this.embeddingProvider.close(),
+          this.vectorDBProvider.close(),
+        ]);
+      } catch (cleanupError) {
+        logger.warn("Error during cleanup", cleanupError);
+      }
     }
   }
 
@@ -426,6 +435,12 @@ export class SearchService {
         "Failed to get search statistics",
         error instanceof Error ? { cause: error } : { error },
       );
+    } finally {
+      try {
+        await this.vectorDBProvider.close();
+      } catch (cleanupError) {
+        logger.warn("Error during cleanup", cleanupError);
+      }
     }
   }
 }

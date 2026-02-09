@@ -362,6 +362,19 @@ export class IndexingService {
         "Failed to index codebase",
         error instanceof Error ? { cause: error } : { error },
       );
+    } finally {
+      // Always cleanup resources
+      try {
+        logger.debug("Cleaning up resources");
+        await Promise.all([
+          this.embeddingProvider.close(),
+          this.vectorDBProvider.close(),
+        ]);
+        logger.debug("Resources cleaned up successfully");
+      } catch (cleanupError) {
+        logger.warn("Error during cleanup", cleanupError);
+        // Don't throw - cleanup errors shouldn't fail the operation
+      }
     }
   }
 
@@ -462,6 +475,12 @@ export class IndexingService {
         "Failed to get indexing statistics",
         error instanceof Error ? { cause: error } : { error },
       );
+    } finally {
+      try {
+        await this.vectorDBProvider.close();
+      } catch (cleanupError) {
+        logger.warn("Error during cleanup", cleanupError);
+      }
     }
   }
 
@@ -487,6 +506,12 @@ export class IndexingService {
         "Failed to clear index",
         error instanceof Error ? { cause: error } : { error },
       );
+    } finally {
+      try {
+        await this.vectorDBProvider.close();
+      } catch (cleanupError) {
+        logger.warn("Error during cleanup", cleanupError);
+      }
     }
   }
 }

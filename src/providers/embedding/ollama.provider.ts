@@ -195,6 +195,14 @@ export class OllamaProvider implements EmbeddingProvider {
       );
     }
   }
+
+  /**
+   * Close and cleanup resources.
+   */
+  async close(): Promise<void> {
+    // Axios clients don't need explicit cleanup
+    // This method is here for interface compliance
+  }
 }
 
 /**

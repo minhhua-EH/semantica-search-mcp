@@ -45,6 +45,11 @@ export interface EmbeddingProvider {
    * @returns Estimated cost in USD (0 for local providers)
    */
   estimateCost(tokenCount: number): number;
+
+  /**
+   * Close and cleanup resources (connections, clients, etc.).
+   */
+  close(): Promise<void>;
 }
 
 /**
