@@ -428,11 +428,11 @@ Time:        ~25s
 
 **Tested with real OpenAI and Ollama APIs:**
 
-| Project                  | Files | Chunks | Time (OpenAI) | Time (Ollama) | Success |
-| ------------------------ | ----- | ------ | ------------- | ------------- | ------- |
-| **semantica-search-mcp** | 46    | 453    | 3.2s          | 11.9s         | 100%    |
-| **ats**                  | 2,367 | 8,474  | 2.25 min      | 22.1s\*       | 98.5%   |
-| **employment-hero**      | 8,367 | 34,761 | 13.1 min      | 21.6 min      | 97.4%   |
+| Project                    | Files | Chunks | Time (OpenAI) | Time (Ollama) | Success |
+| -------------------------- | ----- | ------ | ------------- | ------------- | ------- |
+| **Project A (TypeScript)** | 46    | 453    | 3.2s          | 11.9s         | 100%    |
+| **Project B (Ruby)**       | 2,367 | 8,474  | 2.25 min      | 22.1s\*       | 98.5%   |
+| **Project C (Ruby)**       | 8,367 | 34,761 | 13.1 min      | 21.6 min      | 97.4%   |
 
 \*Smaller test set (352 files) for Ollama baseline
 
@@ -458,7 +458,7 @@ Time:        ~25s
 
 #### Speed Comparison (OpenAI vs Ollama)
 
-**employment-hero (8,367 files, 34,761 chunks):**
+**Large Ruby Project (8,367 files, 34,761 chunks):**
 
 | Provider         | Time         | Speed            | Chunks/s        |
 | ---------------- | ------------ | ---------------- | --------------- |
@@ -851,18 +851,7 @@ cd /path/to/project2
 
 ## 📚 Documentation
 
-### Core Documentation
-
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design and components
-- **[CONFIGURATION.md](docs/CONFIGURATION.md)** - Complete configuration reference
-- **[PHASE3_1_SUMMARY.md](docs/PHASE3_1_SUMMARY.md)** - Latest features and testing
-- **[PHASE2_FINAL_REPORT.md](docs/PHASE2_FINAL_REPORT.md)** - Previous improvements
-
-### Guides
-
-- **[SHARING_GUIDE.md](SHARING_GUIDE.md)** - Quick start for team members
-- **[AUTO_REINDEX_USAGE.md](docs/AUTO_REINDEX_USAGE.md)** - Git hooks setup
-- **[PHASE3_PLAN.md](docs/PHASE3_PLAN.md)** - Future roadmap
+All configuration options are documented in this README. For development guidance, see [CLAUDE.md](CLAUDE.md).
 
 ---
 

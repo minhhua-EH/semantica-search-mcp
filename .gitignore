@@ -22,3 +22,7 @@ coverage/
 
 # Claude Code
 .claude/
+
+# Documentation and scripts (keep local only)
+docs/
+scripts/
