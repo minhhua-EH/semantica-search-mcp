@@ -26,6 +26,11 @@ import { initLogger, getLogger } from "./utils/logger.js";
 import { LogLevel } from "./models/types.js";
 import { backgroundJobs } from "./utils/background-job.js";
 import { logProgress } from "./utils/progress.js";
+import { estimateIndexing } from "./utils/preflight.js";
+import {
+  formatIndexingCompletion,
+  formatPreflightEstimate,
+} from "./utils/completion-notification.js";
 
 // Debug log helper that writes to file (bypasses stdio)
 function debugLog(message: string, data?: any) {
@@ -189,6 +194,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             batchSize: projectConfig.embedding.batchSize,
           });
 
+          // PRE-FLIGHT ESTIMATE
+          debugLog("Running pre-flight estimate...");
+          const estimate = await estimateIndexing(path, projectConfig);
+          const projectName =
+            projectConfig.project?.name || path.split("/").pop() || "project";
+
+          // Show pre-flight estimate
+          const preflightMessage = formatPreflightEstimate(
+            estimate,
+            projectName,
+            projectConfig.embedding.provider,
+          );
+
+          debugLog("Pre-flight estimate:", estimate);
+
+          // Check if can proceed
+          if (
+            !estimate.checks.vectorDBHealthy ||
+            !estimate.checks.embeddingProviderHealthy
+          ) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: preflightMessage,
+                },
+              ],
+            };
+          }
+
           // Initialize services
           debugLog("Creating services...");
           indexingService = new IndexingService(projectConfig, path);
@@ -201,6 +236,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             backgroundJobs.startJob(jobId, "indexing");
 
             // Start indexing in background (don't await)
+            const startTime = Date.now();
             indexingService!
               .indexCodebase((progress) => {
                 backgroundJobs.updateProgress(
@@ -211,7 +247,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 );
               })
               .then((result) => {
+                const duration = (Date.now() - startTime) / 1000;
                 backgroundJobs.completeJob(jobId, result);
+
+                // Log beautiful completion notification to stderr (visible in logs)
+                const completionMsg = formatIndexingCompletion(
+                  result,
+                  projectName,
+                  duration,
+                  estimate.estimatedCost,
+                );
+                console.error("\n" + completionMsg + "\n");
+
                 debugLog("Background indexing completed!", result);
               })
               .catch((error) => {
@@ -227,23 +274,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 {
                   type: "text",
                   text:
+                    preflightMessage +
+                    "\n\n" +
                     `🚀 Indexing started in background!\n\n` +
                     `Job ID: ${jobId}\n` +
-                    `Path: ${path}\n\n` +
-                    `💡 Use the \`get_status\` tool to check progress while indexing.\n` +
-                    `The indexing will continue in the background and you can use other tools.`,
+                    `Estimated time: ${estimate.estimatedTime}\n` +
+                    `Estimated cost: ${estimate.estimatedCost}\n\n` +
+                    `💡 You can continue using Claude Code normally.\n` +
+                    `   Check progress: "Get index status"\n` +
+                    `   I'll show a summary when indexing completes!\n\n` +
+                    `📝 This is a one-time operation. Future updates via git hooks are <10s.`,
                 },
               ],
             };
           } else {
             // Foreground mode: Wait for completion (legacy behavior)
             debugLog("Starting indexCodebase()...");
+
+            // Show pre-flight first
+            console.error("\n" + preflightMessage + "\n");
+            console.error("⏱️  Starting indexing (foreground mode)...\n");
+
+            const startTime = Date.now();
             const result = await indexingService!.indexCodebase((progress) => {
               debugLog(`Progress: ${progress.phase}`, {
                 current: progress.current,
                 total: progress.total,
               });
             });
+
+            const duration = (Date.now() - startTime) / 1000;
 
             debugLog("IndexCodebase completed!", {
               success: result.success,
@@ -253,39 +313,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               errors: result.errors.length,
             });
 
-            const successRate =
-              result.totalChunks > 0
-                ? ((result.totalEmbeddings / result.totalChunks) * 100).toFixed(
-                    1,
-                  )
-                : "0";
-
-            const statusEmoji = result.success ? "✅" : "⚠️";
-            const statusText = result.success
-              ? "Successfully indexed codebase!"
-              : "Indexing completed with some errors";
+            // Use beautiful completion notification
+            const completionMessage = formatIndexingCompletion(
+              result,
+              projectName,
+              duration,
+              estimate.estimatedCost,
+            );
 
             return {
               content: [
                 {
                   type: "text",
-                  text:
-                    `${statusEmoji} ${statusText}\n\n` +
-                    `📊 Results:\n` +
-                    `- Files processed: ${result.totalFiles}\n` +
-                    `- Code chunks extracted: ${result.totalChunks}\n` +
-                    `- Embeddings generated: ${result.totalEmbeddings}/${result.totalChunks} (${successRate}%)\n` +
-                    `- Duration: ${(result.duration / 1000).toFixed(2)}s\n` +
-                    `- Errors: ${result.errors.length}\n\n` +
-                    (result.errors.length > 0
-                      ? `⚠️ Some chunks failed (${result.errors.length}):\n${result.errors
-                          .slice(0, 5)
-                          .map((e) => `  - ${e.file}: ${e.error}`)
-                          .join(
-                            "\n",
-                          )}${result.errors.length > 5 ? `\n  ... and ${result.errors.length - 5} more` : ""}\n\n`
-                      : "") +
-                    `${result.success ? "✅" : "⚠️"} Codebase is ${result.success ? "fully" : "partially"} searchable (${successRate}% indexed)!`,
+                  text: completionMessage,
                 },
               ],
             };

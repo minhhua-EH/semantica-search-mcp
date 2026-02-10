@@ -6,6 +6,7 @@ import type { EmbeddingConfig } from "../../config/schema.js";
 import { EmbeddingProvider as EmbeddingProviderEnum } from "../../models/types.js";
 import { EmbeddingProvider } from "./base.js";
 import { createOllamaProvider } from "./ollama.provider.js";
+import { createOpenAIProvider } from "./openai.provider.js";
 
 /**
  * Create embedding provider from configuration.
@@ -24,8 +25,28 @@ export function createEmbeddingProvider(
     }
 
     case EmbeddingProviderEnum.OPENAI: {
-      // TODO: Implement in Phase 2
-      throw new Error("OpenAI provider not yet implemented (Phase 2)");
+      if (!config.openai) {
+        throw new Error(
+          "OpenAI configuration is required when using OpenAI provider",
+        );
+      }
+
+      // Resolve API key from environment variable if needed
+      let apiKey = config.openai.apiKey;
+      if (apiKey.startsWith("${") && apiKey.endsWith("}")) {
+        const envVar = apiKey.slice(2, -1); // Extract "OPENAI_API_KEY" from "${OPENAI_API_KEY}"
+        apiKey = process.env[envVar] || "";
+        if (!apiKey) {
+          throw new Error(
+            `Environment variable ${envVar} is not set. Please set it with your OpenAI API key.`,
+          );
+        }
+      }
+
+      return createOpenAIProvider(config.model, {
+        ...config.openai,
+        apiKey,
+      });
     }
 
     default:

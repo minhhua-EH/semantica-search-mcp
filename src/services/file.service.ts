@@ -108,6 +108,14 @@ export class FileService {
       try {
         const info = this.getFileInfo(absolutePath, relativePath);
 
+        // Skip files with unsupported language (e.g., .csv, .yml, .json)
+        if (info.language === null) {
+          logger.debug(
+            `Unsupported file type, skipping: ${relativePath} (${info.extension})`,
+          );
+          continue;
+        }
+
         // Check file size
         const maxSize = this.parseFileSize(this.performanceConfig.maxFileSize);
         if (info.size > maxSize) {
